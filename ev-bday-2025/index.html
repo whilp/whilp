@@ -45,7 +45,7 @@
             touch-action: none; /* Prevent scrolling/zooming */
         }
 
-        /* Touch Controls */
+        /* Touch Controls - Now invisible zones */
         .touch-controls {
             position: fixed;
             bottom: 0;
@@ -54,68 +54,35 @@
             height: 160px;
             pointer-events: none;
             z-index: 1000;
-            background: linear-gradient(to top, rgba(34, 139, 34, 0.9) 0%, transparent 100%);
+            display: none; /* Hide visible controls */
         }
 
-        .touch-button {
-            position: absolute;
+        /* Invisible touch zones */
+        .touch-zone {
+            position: fixed;
+            bottom: 0;
+            width: 33.33vw;
+            height: 160px;
             pointer-events: all;
-            user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            background: rgba(40, 40, 40, 0.85);
-            border: 4px solid rgba(255, 255, 255, 0.7);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Press Start 2P', 'Courier New', monospace;
-            font-size: 32px;
-            color: white;
-            font-weight: bold;
-            transition: all 0.1s ease;
-            touch-action: manipulation;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            /* Invisible - no background or borders */
         }
 
-        .touch-button:active {
-            background: rgba(80, 80, 80, 0.9);
-            transform: scale(0.92);
-            border-color: rgba(255, 255, 255, 1);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        .touch-zone-left {
+            left: 0;
         }
 
-        .move-left {
-            bottom: 30px;
-            left: 30px;
-            width: 100px;
-            height: 100px;
+        .touch-zone-center {
+            left: 33.33vw;
         }
 
-        .move-right {
-            bottom: 30px;
-            left: 150px;
-            width: 100px;
-            height: 100px;
+        .touch-zone-right {
+            right: 0;
         }
 
-        .jump-button {
-            bottom: 30px;
-            right: 30px;
-            width: 100px;
-            height: 100px;
-            background: rgba(218, 165, 32, 0.85);
-            border-color: rgba(255, 215, 0, 0.9);
-        }
-
-        .jump-button:active {
-            background: rgba(238, 185, 52, 0.9);
-            border-color: rgba(255, 215, 0, 1);
-        }
-
-        /* Hide touch controls on desktop */
+        /* Hide touch zones on desktop */
         @media (min-width: 768px) and (pointer: fine) {
-            .touch-controls {
+            .touch-zone {
                 display: none;
             }
         }
@@ -129,12 +96,10 @@
         <canvas id="gameCanvas"></canvas>
     </div>
 
-    <!-- Touch Controls for Mobile -->
-    <div class="touch-controls">
-        <div class="touch-button move-left" id="moveLeft">◀</div>
-        <div class="touch-button move-right" id="moveRight">▶</div>
-        <div class="touch-button jump-button" id="jumpButton">⬆</div>
-    </div>
+    <!-- Invisible Touch Zones for Mobile -->
+    <div class="touch-zone touch-zone-left" id="touchLeft"></div>
+    <div class="touch-zone touch-zone-center" id="touchCenter"></div>
+    <div class="touch-zone touch-zone-right" id="touchRight"></div>
 
     <script>
         // Game constants
@@ -759,97 +724,75 @@
             jump: false
         };
 
-        // Touch event handlers
+        // Touch event handlers for invisible zones
         function setupTouchControls() {
-            const moveLeft = document.getElementById('moveLeft');
-            const moveRight = document.getElementById('moveRight');
-            const jumpButton = document.getElementById('jumpButton');
+            const touchLeft = document.getElementById('touchLeft');
+            const touchCenter = document.getElementById('touchCenter');
+            const touchRight = document.getElementById('touchRight');
 
             // Prevent context menu on long press
             document.addEventListener('contextmenu', (e) => {
-                if (e.target.classList.contains('touch-button')) {
+                if (e.target.classList.contains('touch-zone')) {
                     e.preventDefault();
                 }
             });
 
-            // Move Left Button
-            moveLeft.addEventListener('touchstart', (e) => {
+            // Left Zone - Move Left
+            touchLeft.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 touchState.left = true;
                 keys['ArrowLeft'] = true;
             });
 
-            moveLeft.addEventListener('touchend', (e) => {
+            touchLeft.addEventListener('touchend', (e) => {
                 e.preventDefault();
                 touchState.left = false;
                 keys['ArrowLeft'] = false;
             });
 
-            moveLeft.addEventListener('touchcancel', (e) => {
+            touchLeft.addEventListener('touchcancel', (e) => {
                 e.preventDefault();
                 touchState.left = false;
                 keys['ArrowLeft'] = false;
             });
 
-            // Move Right Button
-            moveRight.addEventListener('touchstart', (e) => {
+            // Right Zone - Move Right
+            touchRight.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 touchState.right = true;
                 keys['ArrowRight'] = true;
             });
 
-            moveRight.addEventListener('touchend', (e) => {
+            touchRight.addEventListener('touchend', (e) => {
                 e.preventDefault();
                 touchState.right = false;
                 keys['ArrowRight'] = false;
             });
 
-            moveRight.addEventListener('touchcancel', (e) => {
+            touchRight.addEventListener('touchcancel', (e) => {
                 e.preventDefault();
                 touchState.right = false;
                 keys['ArrowRight'] = false;
             });
 
-            // Jump Button
-            jumpButton.addEventListener('touchstart', (e) => {
+            // Center Zone - Jump
+            touchCenter.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 touchState.jump = true;
                 keys['Space'] = true;
             });
 
-            jumpButton.addEventListener('touchend', (e) => {
+            touchCenter.addEventListener('touchend', (e) => {
                 e.preventDefault();
                 touchState.jump = false;
                 keys['Space'] = false;
             });
 
-            jumpButton.addEventListener('touchcancel', (e) => {
+            touchCenter.addEventListener('touchcancel', (e) => {
                 e.preventDefault();
                 touchState.jump = false;
                 keys['Space'] = false;
             });
-
-            // Also add mouse events for testing on desktop
-            function addMouseEvents(element, key) {
-                element.addEventListener('mousedown', (e) => {
-                    e.preventDefault();
-                    keys[key] = true;
-                });
-
-                element.addEventListener('mouseup', (e) => {
-                    e.preventDefault();
-                    keys[key] = false;
-                });
-
-                element.addEventListener('mouseleave', (e) => {
-                    e.preventDefault();
-                    keys[key] = false;
-                });
-            }
-
-            addMouseEvents(moveLeft, 'ArrowLeft');
-            addMouseEvents(moveRight, 'ArrowRight');
-            addMouseEvents(jumpButton, 'Space');
         }
 
         // Touch support for menu interaction
@@ -870,17 +813,33 @@
             const canvasX = touchX * (canvas.width / rect.width);
             const canvasY = touchY * (canvas.height / rect.height);
             
-            // Check if touch is on a menu item
+            // Check if touch is on the NEW GAME menu item
             const menuItemY = getMenuItemY(0); // NEW GAME position
             const lineHeight = 22;
             
             if (canvasY >= menuItemY - lineHeight/2 && canvasY <= menuItemY + lineHeight/2) {
                 startNewGame();
+                return;
+            }
+            
+            // Also check if touch is on the center jump zone (bottom third center)
+            const windowHeight = window.innerHeight;
+            const screenY = touch.clientY;
+            
+            // If touch is in bottom 160px and center third of screen
+            if (screenY >= windowHeight - 160) {
+                const windowWidth = window.innerWidth;
+                const leftThird = windowWidth / 3;
+                const rightThird = windowWidth * 2 / 3;
+                
+                if (touch.clientX >= leftThird && touch.clientX <= rightThird) {
+                    startNewGame();
+                }
             }
         }
 
         function getMenuItemY(itemIndex) {
-            const startY = canvas.height - 180;
+            const startY = canvas.height * 0.25; // Updated to match new menu position
             const lineHeight = 22;
             // NEW GAME is at index 10 in the details array
             return startY + (10 * lineHeight) + 8;
@@ -1689,9 +1648,9 @@
             const startY = canvas.height * 0.25; // 25% from top instead of near bottom
             const lineHeight = 22;
 
-            // Draw background panel in classic adventure game style (narrower and taller)
+            // Draw background panel in classic adventure game style (wider on mobile)
             ctx.fillStyle = '#000080'; // Deep blue background like King's Quest
-            const panelWidth = canvas.width * 0.36; // Made 40% narrower (was 0.6)
+            const panelWidth = canvas.width * 0.8; // Much wider for mobile readability
             const panelHeight = details.length * lineHeight + 24;
             const panelX = (canvas.width - panelWidth) / 2;
             const panelY = startY - 8;
