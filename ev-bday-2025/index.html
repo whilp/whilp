@@ -180,6 +180,8 @@
             [MENU_SCREENS.RSVP]: {
                 title: "RSVP",
                 items: [
+                    { text: "EVAN BDAY 2025", selectable: false },
+                    { text: "", selectable: false },
                     { text: "SATURDAY OCTOBER 25", selectable: false },
                     { text: "WILSHIRE PARK 1-3PM", selectable: false },
                     { text: "", selectable: false },
@@ -200,6 +202,7 @@
                     { text: "", selectable: false },
                     { text: "HIT PINATA 5X TO EXPLODE", selectable: false },
                     { text: "CATCH BALLOONS TO FLOAT", selectable: false },
+                    { text: "WAIT FOR CUPCAKES!", selectable: false },
                     { text: "", selectable: false },
                     { text: isMobile ? "SWIPE DOWN (TOP HALF) = MENU" : "? = SHOW MENU", selectable: false },
                     { text: "", selectable: false },
@@ -223,6 +226,10 @@
             [MENU_SCREENS.CREDITS]: {
                 title: "CREDITS",
                 items: [
+                    { text: "CHIEF UX OFFICER: MOM", selectable: false },
+                    { text: "CTO: DAD", selectable: false },
+                    { text: "CREATIVE DIRECTOR: EVAN", selectable: false },
+                    { text: "", selectable: false },
                     { text: "https://wcm.is/ev-bday-2025", selectable: false },
                     { text: "", selectable: false },
                     { text: "[QR CODE]", selectable: false },
@@ -237,7 +244,8 @@
         let gameStats = {
             gamesPlayed: 0,
             pinatasExploded: 0,
-            balloonsLaunched: 0
+            balloonsLaunched: 0,
+            gameStartTime: 0 // Track when current game started
         };
 
         // Load stats from localStorage
@@ -411,6 +419,10 @@
 
         // Rainbow explosion particles
         let rainbowParticles = [];
+        
+        // Falling cupcakes system
+        let fallingCupcakes = [];
+        let lastCupcakeTime = 0;
         
         // Balloon animal system
         let balloonAnimals = [];
@@ -1621,6 +1633,54 @@
             }
         }
 
+        // Create falling cupcake from random position at top of screen
+        function createFallingCupcake() {
+            const cupcakeEmojis = ['🧁', '🎂', '🍰'];
+            
+            fallingCupcakes.push({
+                x: Math.random() * canvas.width,
+                y: -20,
+                velX: (Math.random() - 0.5) * 1, // Slight horizontal drift
+                velY: Math.random() * 1 + 0.5, // Falling speed 0.5-1.5
+                emoji: cupcakeEmojis[Math.floor(Math.random() * cupcakeEmojis.length)],
+                rotation: Math.random() * Math.PI * 2,
+                rotationSpeed: (Math.random() - 0.5) * 0.1,
+                life: 600, // 10 seconds at 60fps
+                size: Math.random() * 8 + 16 // Size 16-24
+            });
+        }
+
+        // Update falling cupcakes
+        function updateFallingCupcakes() {
+            const currentTime = Date.now();
+            
+            // Only start spawning cupcakes after 60 seconds (1 minute)
+            if (gameStarted && currentTime - gameStats.gameStartTime > 60000) {
+                // Create new cupcake every 2-4 seconds
+                if (currentTime - lastCupcakeTime > (2000 + Math.random() * 2000)) {
+                    createFallingCupcake();
+                    lastCupcakeTime = currentTime;
+                }
+            }
+            
+            // Update existing cupcakes
+            for (let i = fallingCupcakes.length - 1; i >= 0; i--) {
+                const cupcake = fallingCupcakes[i];
+                
+                cupcake.x += cupcake.velX;
+                cupcake.y += cupcake.velY;
+                cupcake.rotation += cupcake.rotationSpeed;
+                cupcake.life--;
+                
+                // Remove if off screen or life expired
+                if (cupcake.y > canvas.height + 50 || 
+                    cupcake.x < -50 || cupcake.x > canvas.width + 50 ||
+                    cupcake.life <= 0) {
+                    fallingCupcakes.splice(i, 1);
+                }
+            }
+        }
+
 
         // Create a balloon animal from the balloon artist
         function createBalloonAnimal() {
@@ -1965,6 +2025,30 @@
             ctx.globalAlpha = 1.0; // Reset alpha
             ctx.textAlign = 'left'; // Reset alignment
 
+            // Draw falling cupcakes
+            fallingCupcakes.forEach(cupcake => {
+                ctx.save();
+                
+                // Rotate cupcake as it falls
+                ctx.translate(cupcake.x, cupcake.y);
+                ctx.rotate(cupcake.rotation);
+                
+                // Draw cupcake emoji
+                ctx.font = `${cupcake.size}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Add slight shadow for depth
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.fillText(cupcake.emoji, 2, 2);
+                
+                // Draw actual cupcake
+                ctx.fillStyle = '#000';
+                ctx.fillText(cupcake.emoji, 0, 0);
+                
+                ctx.restore();
+            });
+
             // Draw floating replacement pinata
             if (floatingPinata) {
                 const currentTime = Date.now();
@@ -2216,6 +2300,7 @@
             if (!showingMenu) {
                 updatePlayer();
                 updateRainbowParticles();
+                updateFallingCupcakes();
             }
             render();
             requestAnimationFrame(gameLoop);
@@ -2225,6 +2310,7 @@
             resetGame();
             gameStarted = true;
             showingMenu = false;
+            gameStats.gameStartTime = Date.now(); // Track when game started for cupcake timing
             incrementGamesPlayed(); // Track that a new game was started
         }
 
@@ -2242,6 +2328,8 @@
 
             // Reset game systems
             rainbowParticles = [];
+            fallingCupcakes = [];
+            lastCupcakeTime = 0;
             balloonAnimals = [];
             lastBalloonTime = 0;
             pinataReplacementTime = 0; // Reset pinata replacement timer
