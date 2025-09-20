@@ -124,7 +124,19 @@
         let gameStarted = false;
         let showingMenu = true;
         let selectedMenuItem = 0;
-        let menuItems = ["NEW GAME"];
+        let menuItems = [
+            "EVAN BDAY 2025",
+            "SATURDAY OCTOBER 25", 
+            "WILSHIRE PARK",
+            "1-3PM",
+            "https://wcm.is/ev-bday-2025",
+            "rsvp: jacobsonlaura@gmail.com",
+            "BALLOONS",
+            "JUICE",
+            "PINATA",
+            "NEW GAME"
+        ];
+        let selectableItems = [9]; // Only NEW GAME is selectable
         let lastKeyPress = 0;
         
         // Block types
@@ -697,9 +709,11 @@
 
             switch(e.code) {
                 case 'ArrowUp':
+                case 'ArrowLeft':
                     selectedMenuItem = Math.max(0, selectedMenuItem - 1);
                     break;
                 case 'ArrowDown':
+                case 'ArrowRight':
                     selectedMenuItem = Math.min(menuItems.length - 1, selectedMenuItem + 1);
                     break;
                 case 'Space':
@@ -710,7 +724,7 @@
         }
 
         function selectMenuItem() {
-            if (selectedMenuItem === 0) { // NEW GAME
+            if (selectedMenuItem === 9) { // NEW GAME
                 startNewGame();
             }
         }
@@ -811,27 +825,38 @@
             const canvasX = touchX * (canvas.width / rect.width);
             const canvasY = touchY * (canvas.height / rect.height);
             
-            // Check if touch is on the NEW GAME menu item
-            const menuItemY = getMenuItemY(0); // NEW GAME position
+            // Check if touch is on any menu item for selection
+            const startY = canvas.height * 0.25;
             const lineHeight = 22;
+            const menuItemIndex = Math.floor((canvasY - startY - 8) / lineHeight);
             
-            if (canvasY >= menuItemY - lineHeight/2 && canvasY <= menuItemY + lineHeight/2) {
-                startNewGame();
+            if (menuItemIndex >= 0 && menuItemIndex < menuItems.length) {
+                selectedMenuItem = menuItemIndex;
+                if (selectedMenuItem === 9) { // NEW GAME
+                    startNewGame();
+                }
                 return;
             }
             
-            // Also check if touch is on the center jump zone (bottom third center)
+            // Handle left/right navigation in bottom touch zones
             const windowHeight = window.innerHeight;
             const screenY = touch.clientY;
             
-            // If touch is in bottom 160px and center third of screen
+            // If touch is in bottom 160px
             if (screenY >= windowHeight - 160) {
                 const windowWidth = window.innerWidth;
                 const leftThird = windowWidth / 3;
                 const rightThird = windowWidth * 2 / 3;
                 
-                if (touch.clientX >= leftThird && touch.clientX <= rightThird) {
-                    startNewGame();
+                if (touch.clientX < leftThird) {
+                    // Left zone - go up in menu
+                    selectedMenuItem = Math.max(0, selectedMenuItem - 1);
+                } else if (touch.clientX > rightThird) {
+                    // Right zone - go down in menu  
+                    selectedMenuItem = Math.min(menuItems.length - 1, selectedMenuItem + 1);
+                } else {
+                    // Center zone - select current item
+                    selectMenuItem();
                 }
             }
         }
@@ -1677,7 +1702,7 @@
                 const y = startY + (index * lineHeight) + 8;
                 
                 // Highlight selected menu item (only for initial menu, not pause menu)
-                if (showingMenu && !gameStarted && index === 10 && selectedMenuItem === 0) { // NEW GAME line
+                if (showingMenu && !gameStarted && index === selectedMenuItem) {
                     // Draw selection highlight
                     ctx.fillStyle = '#FFD700';
                     const textWidth = ctx.measureText(line).width;
