@@ -201,6 +201,8 @@
                     { text: "HIT PINATA 5X TO EXPLODE", selectable: false },
                     { text: "CATCH BALLOONS TO FLOAT", selectable: false },
                     { text: "", selectable: false },
+                    { text: isMobile ? "SWIPE DOWN (TOP HALF) = MENU" : "? = SHOW MENU", selectable: false },
+                    { text: "", selectable: false },
                     { text: "ESC - BACK", selectable: true, action: 'goBack' }
                 ]
             },
@@ -416,6 +418,7 @@
         let balloonArtistPosition = null;
         let pinataReplacementTime = 0; // Time when replacement should happen
         let pinataReplacementDelay = 5000; // 5 second delay before replacement
+        let floatingPinata = null; // New pinata floating in from right
         
         // Party kids system
         let partyKids = [];
@@ -884,6 +887,14 @@
                 e.preventDefault();
                 return;
             }
+            
+            // Allow '?' key to bring back menu during gameplay
+            if (e.key === '?' && gameStarted && !showingMenu) {
+                showingMenu = true;
+                e.preventDefault();
+                return;
+            }
+            
             keys[e.code] = true;
         });
 
@@ -1012,7 +1023,9 @@
         const touchState = {
             left: false,
             right: false,
-            jump: false
+            jump: false,
+            swipeStart: null, // Track swipe start position
+            swipeThreshold: 50 // Minimum swipe distance
         };
 
         // Touch event handlers for invisible zones
@@ -1091,7 +1104,46 @@
             if (showingMenu) {
                 handleMenuTouch(e);
                 e.preventDefault();
+                return;
             }
+            
+            // Track swipe start for menu recall during gameplay
+            if (gameStarted && !showingMenu) {
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const touchY = touch.clientY - rect.top;
+                const canvasY = touchY * (canvas.height / rect.height);
+                
+                // Only track swipes in top half of screen
+                if (canvasY < canvas.height / 2) {
+                    touchState.swipeStart = {
+                        x: touch.clientX,
+                        y: touch.clientY,
+                        time: Date.now()
+                    };
+                }
+            }
+        });
+        
+        // Handle swipe gestures for menu recall
+        document.addEventListener('touchend', (e) => {
+            if (gameStarted && !showingMenu && touchState.swipeStart) {
+                const touch = e.changedTouches[0];
+                const deltaY = touch.clientY - touchState.swipeStart.y;
+                const deltaTime = Date.now() - touchState.swipeStart.time;
+                
+                // Check for downward swipe (minimum distance and reasonable speed)
+                if (deltaY > touchState.swipeThreshold && deltaTime < 500) {
+                    showingMenu = true;
+                }
+                
+                touchState.swipeStart = null;
+            }
+        });
+        
+        // Cancel swipe tracking if touch moves off target
+        document.addEventListener('touchcancel', (e) => {
+            touchState.swipeStart = null;
         });
 
         function handleMenuTouch(e) {
@@ -1472,52 +1524,23 @@
             }
         }
 
-        // Check if there's already a replacement balloon in progress
-        function hasReplacementBalloonInProgress() {
-            return balloonAnimals.some(balloon => balloon.isReplacement);
-        }
-
-        // Create replacement pinata from balloon animal
-        function createReplacementPinata() {
-            if (!balloonArtistPosition) return;
+        // Create floating replacement pinata from the right
+        function createFloatingPinata() {
+            if (!window.pinataBlocks || window.pinataBlocks.length === 0) return;
             
-            let startX, startY;
+            const targetX = window.pinataBlocks[0].x * BLOCK_SIZE;
+            const targetY = window.pinataBlocks[0].y * BLOCK_SIZE;
             
-            // Check if we have existing balloon animals to transform
-            if (balloonAnimals.length > 0) {
-                // Find a balloon animal to transform
-                const transformBalloon = balloonAnimals[0]; // Use the first available balloon animal
-                startX = transformBalloon.x;
-                startY = transformBalloon.y;
-                
-                // Remove the original balloon
-                const originalIndex = balloonAnimals.indexOf(transformBalloon);
-                if (originalIndex !== -1) {
-                    balloonAnimals.splice(originalIndex, 1);
-                }
-            } else {
-                // No balloon animals available, create one from the balloon artist
-                startX = balloonArtistPosition.x * BLOCK_SIZE;
-                startY = balloonArtistPosition.y * BLOCK_SIZE;
-            }
-            
-            // Create a special balloon that will float to the tree
-            const replacementBalloon = {
-                x: startX,
-                y: startY,
-                velX: 0,
+            floatingPinata = {
+                x: canvas.width + 50, // Start off-screen right
+                y: targetY,
+                targetX: targetX,
+                targetY: targetY,
+                velX: -0.8, // Move left toward tree (slower)
                 velY: 0,
-                animal: '🎁', // Change to gift box during transformation
-                color: '#FFD700',
-                life: 600, // 10 seconds to reach tree
-                bobOffset: 0,
-                isReplacement: true,
-                targetX: (window.pinataBlocks ? window.pinataBlocks[0].x * BLOCK_SIZE : 7 * BLOCK_SIZE),
-                targetY: (window.pinataBlocks ? window.pinataBlocks[0].y * BLOCK_SIZE : (LEVEL_HEIGHT - 10) * BLOCK_SIZE),
-                transformTimer: 0
+                bobOffset: Math.random() * Math.PI * 2,
+                size: BLOCK_SIZE
             };
-            
-            balloonAnimals.push(replacementBalloon);
         }
 
         // Update rainbow particles
@@ -1540,11 +1563,38 @@
             const currentTime = Date.now();
             
             // Check if we need to create a replacement pinata (with delay)
-            if (balloonArtistPosition && window.pinataDestroyed && !hasReplacementBalloonInProgress()) {
+            if (window.pinataDestroyed && !floatingPinata) {
                 // Only create replacement if enough time has passed
                 if (pinataReplacementTime > 0 && currentTime >= pinataReplacementTime) {
-                    createReplacementPinata();
+                    createFloatingPinata();
                     pinataReplacementTime = 0; // Reset the timer
+                }
+            }
+            
+            // Update floating pinata
+            if (floatingPinata) {
+                // Move toward target position
+                floatingPinata.x += floatingPinata.velX;
+                
+                // Add gentle bobbing motion
+                const bobY = Math.sin((currentTime * 0.003) + floatingPinata.bobOffset) * 2;
+                floatingPinata.y = floatingPinata.targetY + bobY;
+                
+                // Check if reached target position
+                if (floatingPinata.x <= floatingPinata.targetX) {
+                    // Replace pinata blocks in the level
+                    if (window.pinataBlocks) {
+                        for (let pinataBlock of window.pinataBlocks) {
+                            if (level[pinataBlock.y] && level[pinataBlock.y][pinataBlock.x] !== undefined) {
+                                level[pinataBlock.y][pinataBlock.x] = BLOCK_TYPES.PINATA;
+                            }
+                        }
+                    }
+                    
+                    // Reset pinata state
+                    window.pinataDestroyed = false;
+                    window.pinataHits = 0;
+                    floatingPinata = null;
                 }
             }
             
@@ -1558,86 +1608,19 @@
             for (let i = balloonAnimals.length - 1; i >= 0; i--) {
                 const animal = balloonAnimals[i];
                 
-                if (animal.isReplacement) {
-                    // Handle replacement balloon movement to tree
-                    const dx = animal.targetX - animal.x;
-                    const dy = animal.targetY - animal.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    if (distance > 5) {
-                        // Move towards target
-                        animal.velX = (dx / distance) * 2;
-                        animal.velY = (dy / distance) * 2;
-                        animal.x += animal.velX;
-                        animal.y += animal.velY;
-                        animal.transformTimer++;
-                    } else {
-                        // Reached target - transform into pinata!
-                        transformToNewPinata(animal.targetX / BLOCK_SIZE, animal.targetY / BLOCK_SIZE);
-                        balloonAnimals.splice(i, 1);
-                        continue;
-                    }
-                } else {
-                    // Normal balloon animal behavior
-                    animal.x += animal.velX;
-                    animal.y += animal.velY;
-                }
-                
+                // Normal balloon animal behavior
+                animal.x += animal.velX;
+                animal.y += animal.velY;
                 animal.life--;
                 
-                // Remove if off screen or life expired (but not replacement balloons)
-                if (!animal.isReplacement && (animal.x < -50 || animal.x > canvas.width + 50 || 
-                    animal.y < -50 || animal.life <= 0)) {
+                // Remove if off screen or life expired
+                if (animal.x < -50 || animal.x > canvas.width + 50 || 
+                    animal.y < -50 || animal.life <= 0) {
                     balloonAnimals.splice(i, 1);
                 }
             }
         }
 
-        // Transform the balloon into a new pinata at the target location
-        function transformToNewPinata(gridX, gridY) {
-            // Reset pinata state
-            window.pinataHits = 0;
-            window.pinataDestroyed = false;
-            
-            // Create new pinata at the tree location (2x2 blocks)
-            const startX = Math.floor(gridX);
-            const startY = Math.floor(gridY);
-            
-            // Add sparkle effect for transformation
-            for (let i = 0; i < 15; i++) {
-                rainbowParticles.push({
-                    x: gridX * BLOCK_SIZE,
-                    y: gridY * BLOCK_SIZE,
-                    velX: (Math.random() - 0.5) * 8,
-                    velY: Math.random() * -6 - 2,
-                    color: '#FFD700',
-                    life: 60,
-                    maxLife: 60,
-                    size: Math.random() * 3 + 2
-                });
-            }
-            
-            // Create the new pinata blocks
-            for (let dy = 0; dy < 2; dy++) {
-                for (let dx = 0; dx < 2; dx++) {
-                    const pinataY = startY + dy;
-                    const pinataX = startX + dx;
-                    if (pinataY >= 0 && pinataY < LEVEL_HEIGHT && pinataX >= 0 && pinataX < LEVEL_WIDTH) {
-                        if (level[pinataY] && level[pinataY][pinataX] !== undefined) {
-                            level[pinataY][pinataX] = BLOCK_TYPES.PINATA;
-                        }
-                    }
-                }
-            }
-            
-            // Update pinata blocks reference
-            window.pinataBlocks = [
-                {x: startX, y: startY},
-                {x: startX + 1, y: startY},
-                {x: startX, y: startY + 1},
-                {x: startX + 1, y: startY + 1}
-            ];
-        }
 
         // Create a balloon animal from the balloon artist
         function createBalloonAnimal() {
@@ -1982,6 +1965,42 @@
             ctx.globalAlpha = 1.0; // Reset alpha
             ctx.textAlign = 'left'; // Reset alignment
 
+            // Draw floating replacement pinata
+            if (floatingPinata) {
+                const currentTime = Date.now();
+                const bobY = Math.sin((currentTime * 0.003) + floatingPinata.bobOffset) * 2;
+                const x = floatingPinata.x;
+                const y = floatingPinata.y + bobY;
+                
+                // Draw pinata with same colors as the regular pinata blocks
+                const colors = BLOCK_COLORS[BLOCK_TYPES.PINATA];
+                
+                // Draw 2x2 pinata blocks floating in
+                for (let dy = 0; dy < 2; dy++) {
+                    for (let dx = 0; dx < 2; dx++) {
+                        const blockX = x + (dx * BLOCK_SIZE);
+                        const blockY = y + (dy * BLOCK_SIZE);
+                        
+                        // Main block color
+                        ctx.fillStyle = colors.top;
+                        ctx.fillRect(blockX, blockY, BLOCK_SIZE, BLOCK_SIZE);
+                        
+                        // 3D shading effect
+                        ctx.fillStyle = colors.bottom;
+                        ctx.fillRect(blockX, blockY + BLOCK_SIZE * 0.7, BLOCK_SIZE, BLOCK_SIZE * 0.3);
+                        
+                        // Accent highlight
+                        ctx.fillStyle = colors.accent;
+                        ctx.fillRect(blockX + 2, blockY + 2, BLOCK_SIZE - 4, BLOCK_SIZE * 0.3);
+                        
+                        // Block outline
+                        ctx.strokeStyle = '#333333';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(blockX, blockY, BLOCK_SIZE, BLOCK_SIZE);
+                    }
+                }
+            }
+
             // Draw party kids
             partyKids.forEach(kid => {
                 let bobY = Math.sin((Date.now() * 0.002) + kid.bobOffset) * 1; // Gentle bobbing
@@ -2226,6 +2245,7 @@
             balloonAnimals = [];
             lastBalloonTime = 0;
             pinataReplacementTime = 0; // Reset pinata replacement timer
+            floatingPinata = null; // Reset floating pinata
             partyKids = [];
             pinataShake = {
                 shaking: false,
