@@ -123,20 +123,16 @@
         let keys = {};
         let gameStarted = false;
         let showingMenu = true;
-        let selectedMenuItem = 0;
+        let selectedMenuItem = 5; // Start on first selectable item (NEW GAME)
         let menuItems = [
-            "EVAN BDAY 2025",
             "SATURDAY OCTOBER 25", 
-            "WILSHIRE PARK",
-            "1-3PM",
+            "WILSHIRE PARK 1-3PM",
             "https://wcm.is/ev-bday-2025",
             "rsvp: jacobsonlaura@gmail.com",
-            "BALLOONS",
-            "JUICE",
-            "PINATA",
+            "BALLOONS JUICE PINATA",
             "NEW GAME"
         ];
-        let selectableItems = [9]; // Only NEW GAME is selectable
+        let selectableItems = [5]; // Only NEW GAME is selectable
         let lastKeyPress = 0;
         
         // Block types
@@ -710,11 +706,22 @@
             switch(e.code) {
                 case 'ArrowUp':
                 case 'ArrowLeft':
-                    selectedMenuItem = Math.max(0, selectedMenuItem - 1);
+                    // Find current index in selectableItems array
+                    const currentUpIndex = selectableItems.indexOf(selectedMenuItem);
+                    if (currentUpIndex > 0) {
+                        selectedMenuItem = selectableItems[currentUpIndex - 1];
+                    }
                     break;
                 case 'ArrowDown':
                 case 'ArrowRight':
-                    selectedMenuItem = Math.min(menuItems.length - 1, selectedMenuItem + 1);
+                    // Find current index in selectableItems array
+                    const currentDownIndex = selectableItems.indexOf(selectedMenuItem);
+                    if (currentDownIndex < selectableItems.length - 1) {
+                        selectedMenuItem = selectableItems[currentDownIndex + 1];
+                    } else if (currentDownIndex === -1) {
+                        // If not currently on a selectable item, go to first selectable
+                        selectedMenuItem = selectableItems[0];
+                    }
                     break;
                 case 'Space':
                 case 'Enter':
@@ -724,7 +731,7 @@
         }
 
         function selectMenuItem() {
-            if (selectedMenuItem === 9) { // NEW GAME
+            if (selectedMenuItem === 5) { // NEW GAME
                 startNewGame();
             }
         }
@@ -832,7 +839,7 @@
             
             if (menuItemIndex >= 0 && menuItemIndex < menuItems.length) {
                 selectedMenuItem = menuItemIndex;
-                if (selectedMenuItem === 9) { // NEW GAME
+                if (selectedMenuItem === 5) { // NEW GAME
                     startNewGame();
                 }
                 return;
@@ -850,10 +857,18 @@
                 
                 if (touch.clientX < leftThird) {
                     // Left zone - go up in menu
-                    selectedMenuItem = Math.max(0, selectedMenuItem - 1);
+                    const currentUpIndex = selectableItems.indexOf(selectedMenuItem);
+                    if (currentUpIndex > 0) {
+                        selectedMenuItem = selectableItems[currentUpIndex - 1];
+                    }
                 } else if (touch.clientX > rightThird) {
                     // Right zone - go down in menu  
-                    selectedMenuItem = Math.min(menuItems.length - 1, selectedMenuItem + 1);
+                    const currentDownIndex = selectableItems.indexOf(selectedMenuItem);
+                    if (currentDownIndex < selectableItems.length - 1) {
+                        selectedMenuItem = selectableItems[currentDownIndex + 1];
+                    } else if (currentDownIndex === -1) {
+                        selectedMenuItem = selectableItems[0];
+                    }
                 } else {
                     // Center zone - select current item
                     selectMenuItem();
@@ -862,10 +877,10 @@
         }
 
         function getMenuItemY(itemIndex) {
-            const startY = canvas.height * 0.25; // Updated to match new menu position
+            const startY = canvas.height * 0.45; // Updated to match new menu position
             const lineHeight = 22;
-            // NEW GAME is at index 10 in the details array
-            return startY + (10 * lineHeight) + 8;
+            // NEW GAME is at index 8 in the details array
+            return startY + (8 * lineHeight) + 8;
         }
 
         // Prevent zoom on mobile
@@ -1634,18 +1649,13 @@
             let details;
             if (showingMenu && !gameStarted) {
                 details = [
-                    "EVAN BDAY 2025",
-                    "",
                     "SATURDAY OCTOBER 25",
-                    "WILSHIRE PARK",
-                    "1-3PM",
+                    "WILSHIRE PARK 1-3PM",
                     "",
                     "https://wcm.is/ev-bday-2025",
                     "rsvp: jacobsonlaura@gmail.com",
                     "",
-                    "BALLOONS",
-                    "JUICE", 
-                    "PINATA",
+                    "BALLOONS JUICE PINATA",
                     "",
                     "NEW GAME"
                 ];
@@ -1661,17 +1671,14 @@
             } else {
                 details = [
                     "SATURDAY OCTOBER 25",
-                    "WILSHIRE PARK", 
-                    "1-3PM",
+                    "WILSHIRE PARK 1-3PM",
                     "",
-                    "BALLOONS",
-                    "JUICE",
-                    "PINATA"
+                    "BALLOONS JUICE PINATA"
                 ];
             }
 
-            // Calculate position - closer to the top
-            const startY = canvas.height * 0.25; // 25% from top instead of near bottom
+            // Calculate position - moved down to show EVAN BDAY blocks above
+            const startY = canvas.height * 0.45; // 45% from top to leave space for game blocks
             const lineHeight = 22;
 
             // Draw background panel sized to ~35 characters
