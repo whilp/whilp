@@ -1,4 +1,4 @@
-const CACHE_NAME = 'evan-birthday-game-v3';
+const CACHE_NAME = 'evan-birthday-game-v4';
 const urlsToCache = [
   './index.html',
   './manifest.json',
