@@ -1777,16 +1777,37 @@
         // Setup touch controls
         setupTouchControls();
         
-        // Register service worker for PWA
+        // Register service worker for PWA with update detection
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
                     .then((registration) => {
                         console.log('SW registered: ', registration);
+                        
+                        // Check for updates every time the page loads
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New content is available, reload page
+                                    console.log('New content available, reloading...');
+                                    window.location.reload();
+                                }
+                            });
+                        });
+                        
+                        // Check for updates immediately
+                        registration.update();
                     })
                     .catch((registrationError) => {
                         console.log('SW registration failed: ', registrationError);
                     });
+            });
+            
+            // Listen for controllerchange to reload when new SW takes control
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                console.log('New service worker activated, reloading...');
+                window.location.reload();
             });
         }
         
