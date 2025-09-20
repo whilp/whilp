@@ -1,6 +1,7 @@
 {
   "name": "EVAN BDAY",
   "short_name": "EVAN BDAY",
+  "version": "2.0.0",
   "description": "A fun birthday adventure game with blocks, balloons, and surprises!",
   "start_url": "./index.html",
   "display": "fullscreen",

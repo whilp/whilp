@@ -1,7 +1,8 @@
-const CACHE_NAME = 'evan-birthday-game-v2';
+const CACHE_NAME = 'evan-birthday-game-v3';
 const urlsToCache = [
   './index.html',
   './manifest.json',
+  './qrcode.png',
   'https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap'
 ];
 
