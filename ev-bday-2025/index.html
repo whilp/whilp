@@ -512,14 +512,7 @@
 
         // Add decorative elements
         function addDecorations() {
-            // Add floating platforms around the words
-            for (let x = 5; x < LEVEL_WIDTH - 5; x += 8) {
-                if (x < LEVEL_WIDTH - 3) {
-                    level[3][x] = BLOCK_TYPES.CAKE_BLOCK;
-                    level[3][x + 1] = BLOCK_TYPES.CAKE_BLOCK;
-                    level[3][x + 2] = BLOCK_TYPES.CAKE_BLOCK;
-                }
-            }
+            // Removed floating platforms that looked like clouds
 
             // Add balloons at jumpable heights
             if (LEVEL_WIDTH > 15) {
